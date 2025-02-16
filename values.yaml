@@ -1,0 +1,175 @@
+hub:
+  config:
+    GitHubOAuthenticator:
+      allowed_organizations:
+        - boettiger-lab
+        - SchmidtDSE
+        - espm-157
+      scope:
+        - read:org
+      oauth_callback_url: https://biodiversity.nrp-nautilus.io/hub/oauth_callback
+    CILogonOAuthenticator:
+      oauth_callback_url: https://biodiversity.nrp-nautilus.io/hub/oauth_callback
+      admin_users:
+      - cboettig@berkeley.edu 
+      # IDP Lookup: https://cilogon.org/idplist/
+      allowed_idps:
+        urn:mace:incommon:ucsd.edu:
+          allowed_domains:
+            - ucsd.edu
+          username_derivation:
+            username_claim: email
+        urn:mace:incommon:berkeley.edu:
+          allowed_domains:
+          - berkeley.edu
+          username_derivation:
+            username_claim: email
+    JupyterHub:
+      admin_access: true
+      admin_users: ["cboettig@berkeley.edu"]
+      # set to github or cilogon
+      authenticator_class: github
+      KubeSpawner:
+        environment:
+          SHELL: /usr/bin/bash
+          GH_SCOPED_CREDS_CLIENT_ID: "Iv1.8d384d9612c2ecc3"
+          GH_SCOPED_CREDS_APP_URL: "https://github.com/apps/jupyterhub-gh-creds"
+
+  service:
+    type: ClusterIP
+    annotations: {}
+    ports:
+      nodePort:
+    loadBalancerIP:
+  deploymentStrategy:
+    type: Recreate
+  db:
+    type: sqlite-pvc
+    pvc:
+      accessModes:
+        - ReadWriteOnce
+      storage: 10Gi
+      storageClassName: rook-ceph-block
+  resources:
+    limits:
+      cpu: 2
+      memory: 4Gi
+    requests:
+      cpu: 2 
+      memory: 512Mi
+  networkPolicy:
+    enabled: false
+proxy:
+  service:
+    type: ClusterIP
+  chp:
+    resources:
+      limits:
+        cpu: "10"
+        memory: 10Gi
+        nvidia.com/gpu: "1"
+      requests:
+        cpu: "2"
+        memory: 512Mi
+        nvidia.com/gpu: "1"
+singleuser:
+  startTimeout: 3600
+  uid: 0
+  fsGid: 100
+  extraEnv:
+    GRANT_SUDO: "yes"
+  extraPodConfig:
+    securityContext:
+        fsGroupChangePolicy: "OnRootMismatch"
+        fsGroup: 100
+  extraNodeAffinity:
+    required:
+      - matchExpressions:
+        - 'key': 'topology.kubernetes.io/region'
+          'operator': 'In'
+          'values': ["us-west"]
+  cloudMetadata:
+    blockWithIptables: false
+  networkPolicy:
+    enabled: false
+  storage:
+    type: dynamic
+    extraLabels: {}
+    extraVolumes: []
+    extraVolumeMounts: []
+    capacity: 15Gi
+    homeMountPath: /home/jovyan
+    dynamic:
+      storageClass: rook-ceph-block
+      pvcNameTemplate: claim-{username}{servername}
+      volumeNameTemplate: volume-{username}{servername}
+      storageAccessModes: [ReadWriteOnce]
+  image:
+    name: quay.io/jupyter/scipy-notebook
+    tag: 2024-04-22
+  startTimeout: 3600
+  cpu:
+    limit: 10
+    guarantee: 1
+  memory:
+    limit: 10G
+    guarantee: 10G
+  cmd: null
+  defaultUrl: "/lab"
+  profileList:
+  - display_name: GPU instance
+    kubespawner_override:
+      image_spec: "ghcr.io/boettiger-lab/k8s-gpu"
+      extra_resource_limits:
+        nvidia.com/gpu: "1"
+  - display_name: CPU instance
+    kubespawner_override:
+      image_spec: "ghcr.io/boettiger-lab/k8s"
+  - display_name: nrp-image
+    kubespawner_override:
+      image_spec: "gitlab-registry.nrp-nautilus.io/cboettig/images"
+      http_timeout: 3600
+  - display_name: "Bring your own image"
+    description: "Specify your own docker image (must have python and jupyterhub installed in it)"
+    slug: "custom"
+    profile_options:
+      image:
+        display_name: Image
+        unlisted_choice:
+          enabled: True
+          display_name: "Custom image"
+          kubespawner_override:
+            image: "{value}"
+        choices: {}
+
+
+scheduling:
+  userScheduler:
+    enabled: false
+  userPlaceholder:
+    enabled: false
+# prePuller relates to the hook|continuous-image-puller DaemonsSets
+prePuller:
+  hook:
+    enabled: false 
+  continuous:
+    enabled: false
+
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: haproxy
+  hosts: ["biodiversity.nrp-nautilus.io"]
+  pathSuffix: ''
+  tls:
+    - hosts:
+      - biodiversity.nrp-nautilus.io
+
+cull:
+  enabled: true
+  users: false
+  removeNamedServers: false
+  timeout: 3600
+  every: 600
+  concurrency: 10
+  maxAge: 0
