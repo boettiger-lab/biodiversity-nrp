@@ -122,7 +122,8 @@ singleuser:
   profileList:
   - display_name: GPU instance
     kubespawner_override:
-      image_spec: "ghcr.io/boettiger-lab/rl-image:latest"  # "gitlab-registry.nrp-nautilus.io/cboettig/rl-image:latest"
+#      image_spec: "ghcr.io/boettiger-lab/rl-image:latest"
+      image_spec: "gitlab-registry.nrp-nautilus.io/cboettig/rl-image:latest"
       extra_resource_limits:
         nvidia.com/gpu: "1"
   - display_name: CPU instance
