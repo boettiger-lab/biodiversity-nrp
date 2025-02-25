@@ -5,13 +5,15 @@ hub:
         - boettiger-lab
         - SchmidtDSE
         - espm-157
+        - espm-288
       scope:
         - read:org
       oauth_callback_url: https://biodiversity.nrp-nautilus.io/hub/oauth_callback
     CILogonOAuthenticator:
       oauth_callback_url: https://biodiversity.nrp-nautilus.io/hub/oauth_callback
       admin_users:
-      - cboettig@berkeley.edu 
+      - cboettig@berkeley.edu
+      - cboettig
       # IDP Lookup: https://cilogon.org/idplist/
       allowed_idps:
         urn:mace:incommon:ucsd.edu:
@@ -67,15 +69,17 @@ proxy:
       limits:
         cpu: "10"
         memory: 10Gi
-        nvidia.com/gpu: "1"
       requests:
         cpu: "2"
         memory: 512Mi
-        nvidia.com/gpu: "1"
 singleuser:
   startTimeout: 3600
   uid: 0
   fsGid: 100
+  lifecycleHooks:
+    postStart:
+      exec:
+        command: ["/bin/bash", "-c", "if [ -f '/opt/share/start.sh' ]; then /bin/bash '/opt/share/start.sh'; fi"]
   extraEnv:
     GRANT_SUDO: "yes"
   extraPodConfig:
@@ -105,8 +109,7 @@ singleuser:
       volumeNameTemplate: volume-{username}{servername}
       storageAccessModes: [ReadWriteOnce]
   image:
-    name: quay.io/jupyter/scipy-notebook
-    tag: 2024-04-22
+    pullPolicy: IfNotPresent
   startTimeout: 3600
   cpu:
     limit: 10
@@ -119,17 +122,13 @@ singleuser:
   profileList:
   - display_name: GPU instance
     kubespawner_override:
-      image_spec: "ghcr.io/boettiger-lab/k8s-gpu"
+      image_spec: "ghcr.io/boettiger-lab/rl-image:latest"  # "gitlab-registry.nrp-nautilus.io/cboettig/rl-image:latest"
       extra_resource_limits:
         nvidia.com/gpu: "1"
   - display_name: CPU instance
     kubespawner_override:
       image_spec: "ghcr.io/boettiger-lab/k8s"
-  - display_name: nrp-image
-    kubespawner_override:
-      image_spec: "gitlab-registry.nrp-nautilus.io/cboettig/images"
-      http_timeout: 3600
-  - display_name: "Bring your own image"
+  - display_name: "Bring your own image (CPU)"
     description: "Specify your own docker image (must have python and jupyterhub installed in it)"
     slug: "custom"
     profile_options:
@@ -141,7 +140,20 @@ singleuser:
           kubespawner_override:
             image: "{value}"
         choices: {}
-
+  - display_name: "Bring your own image (GPU)"
+    description: "Specify your own docker image (must have python and jupyterhub installed in it)"
+    slug: "custom"
+    profile_options:
+      image:
+        display_name: Image
+        unlisted_choice:
+          enabled: True
+          display_name: "Custom image"
+          kubespawner_override:
+            image: "{value}"
+            extra_resource_limits:
+              nvidia.com/gpu: "1"
+        choices: {}
 
 scheduling:
   userScheduler:
@@ -173,3 +185,4 @@ cull:
   every: 600
   concurrency: 10
   maxAge: 0
+
