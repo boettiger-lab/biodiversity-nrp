@@ -36,7 +36,6 @@ hub:
           SHELL: /usr/bin/bash
           GH_SCOPED_CREDS_CLIENT_ID: "Iv1.8d384d9612c2ecc3"
           GH_SCOPED_CREDS_APP_URL: "https://github.com/apps/jupyterhub-gh-creds"
-
   service:
     type: ClusterIP
     annotations: {}
@@ -51,7 +50,7 @@ hub:
       accessModes:
         - ReadWriteOnce
       storage: 10Gi
-      storageClassName: rook-ceph-block
+      storageClassName: rook-ceph-block 
   resources:
     limits:
       cpu: 2
@@ -92,24 +91,29 @@ singleuser:
         - 'key': 'topology.kubernetes.io/region'
           'operator': 'In'
           'values': ["us-west"]
+  extraResource:
+    limits:
+      ephemeral-storage: "20Gi"
+    guarantees:
+      ephemeral-storage: "20Gi"
   cloudMetadata:
     blockWithIptables: false
   networkPolicy:
     enabled: false
-  storage:
-    type: dynamic
-    extraLabels: {}
-    extraVolumes: []
-    extraVolumeMounts: []
-    capacity: 15Gi
-    homeMountPath: /home/jovyan
-    dynamic:
-      storageClass: rook-ceph-block
-      pvcNameTemplate: claim-{username}{servername}
-      volumeNameTemplate: volume-{username}{servername}
-      storageAccessModes: [ReadWriteOnce]
+#  storage:
+#    type: dynamic
+#    extraLabels: {}
+#    extraVolumes: []
+#    extraVolumeMounts: []
+#    capacity: 15Gi
+#    homeMountPath: /home/jovyan
+#    dynamic:
+#      storageClass: rook-ceph-block
+#      pvcNameTemplate: claim-{username}{servername}
+#      volumeNameTemplate: volume-{username}{servername}
+#      storageAccessModes: [ReadWriteOnce]
   image:
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
   startTimeout: 3600
   cpu:
     limit: 10
@@ -118,7 +122,7 @@ singleuser:
     limit: 10G
     guarantee: 10G
   cmd: null
-  defaultUrl: "/lab"
+  defaultUrl: "/vscode"
   profileList:
   - display_name: GPU instance
     kubespawner_override:
@@ -140,6 +144,7 @@ singleuser:
           display_name: "Custom image"
           kubespawner_override:
             image: "{value}"
+            default_url: /lab
         choices: {}
   - display_name: "Bring your own image (GPU)"
     description: "Specify your own docker image (must have python and jupyterhub installed in it)"
@@ -152,6 +157,7 @@ singleuser:
           display_name: "Custom image"
           kubespawner_override:
             image: "{value}"
+            default_url: /lab
             extra_resource_limits:
               nvidia.com/gpu: "1"
         choices: {}
