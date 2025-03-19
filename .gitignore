@@ -1,3 +1,4 @@
 .ipynb_checkpoints
 secrets.yaml
-
+secrets-binderhub.yaml
+*secrets*

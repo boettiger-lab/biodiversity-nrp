@@ -1,0 +1,11 @@
+config:
+  BinderHub:
+    use_registry: true
+    image_prefix: gitlab-registry.nrp-nautilus.io/cboettig/binder-
+    base_url: /services/binder
+  DockerRegistry:
+    url: https://gitlab-registry.nrp-nautilus.io
+buildPodsRegistryCredentials:
+  server: "https://gitlab-registry.nrp-nautilus.io"
+
+

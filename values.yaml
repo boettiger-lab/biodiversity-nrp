@@ -6,6 +6,7 @@ hub:
         - SchmidtDSE
         - espm-157
         - espm-288
+        - eco4cast
       scope:
         - read:org
       oauth_callback_url: https://biodiversity.nrp-nautilus.io/hub/oauth_callback
@@ -26,16 +27,27 @@ hub:
           - berkeley.edu
           username_derivation:
             username_claim: email
+    KubeSpawner:
+      k8s_api_request_timeout: 600
+      environment:
+        SHELL: /usr/bin/bash
+        GH_SCOPED_CREDS_CLIENT_ID: "Iv1.8d384d9612c2ecc3"
+        GH_SCOPED_CREDS_APP_URL: "https://github.com/apps/jupyterhub-gh-creds"
+        AWS_S3_ENDPOINT: "rook-ceph-rgw-nautiluss3.rook"
+        AWS_HTTPS: "false"
+        AWS_PUBLIC_ENDPOINT: "s3-west.nrp-nautilus.io"
     JupyterHub:
       admin_access: true
       admin_users: ["cboettig@berkeley.edu"]
       # set to github or cilogon
       authenticator_class: github
-      KubeSpawner:
-        environment:
-          SHELL: /usr/bin/bash
-          GH_SCOPED_CREDS_CLIENT_ID: "Iv1.8d384d9612c2ecc3"
-          GH_SCOPED_CREDS_APP_URL: "https://github.com/apps/jupyterhub-gh-creds"
+  image:
+    name: quay.io/yuvipanda/z2jh-hub-with-fancy-profiles
+    tag: z2jh-v4.0.0-fancy-profiles-sha-f80b661
+  extraConfig:
+    01-enable-fancy-profiles: |
+      from jupyterhub_fancy_profiles import setup_ui
+      setup_ui(c)
   service:
     type: ClusterIP
     annotations: {}
@@ -79,8 +91,8 @@ singleuser:
     postStart:
       exec:
         command: ["/bin/bash", "-c", "if [ -f '/opt/share/start.sh' ]; then /bin/bash '/opt/share/start.sh'; fi"]
-  extraEnv:
-    GRANT_SUDO: "yes"
+#  extraEnv:
+#    GRANT_SUDO: "yes"
   extraPodConfig:
     securityContext:
         fsGroupChangePolicy: "OnRootMismatch"
@@ -100,18 +112,19 @@ singleuser:
     blockWithIptables: false
   networkPolicy:
     enabled: false
-#  storage:
-#    type: dynamic
-#    extraLabels: {}
-#    extraVolumes: []
-#    extraVolumeMounts: []
-#    capacity: 15Gi
-#    homeMountPath: /home/jovyan
-#    dynamic:
-#      storageClass: rook-ceph-block
-#      pvcNameTemplate: claim-{username}{servername}
-#      volumeNameTemplate: volume-{username}{servername}
-#      storageAccessModes: [ReadWriteOnce]
+  storage:
+    type: none
+    #type: dynamic 
+    #    extraLabels: {}
+    #extraVolumes: []
+    #extraVolumeMounts: []
+    #capacity: 10Gi
+    #homeMountPath: /home/jovyan
+    #dynamic:
+    #  storageClass: rook-ceph-block
+    #  pvcNameTemplate: claim-{username}{servername}
+    #  volumeNameTemplate: volume-{username}{servername}
+    #  storageAccessModes: [ReadWriteOnce]
   image:
     pullPolicy: Always
   startTimeout: 3600
@@ -122,45 +135,64 @@ singleuser:
     limit: 10G
     guarantee: 10G
   cmd: null
-  defaultUrl: "/vscode"
+  defaultUrl: "/lab"
   profileList:
-  - display_name: GPU instance
-    kubespawner_override:
-#      image_spec: "ghcr.io/boettiger-lab/rl-image:latest"
-      image_spec: "gitlab-registry.nrp-nautilus.io/cboettig/rl-image:latest"
-      extra_resource_limits:
-        nvidia.com/gpu: "1"
-  - display_name: CPU instance
-    kubespawner_override:
-      image_spec: "ghcr.io/boettiger-lab/k8s"
-  - display_name: "Bring your own image (CPU)"
-    description: "Specify your own docker image (must have python and jupyterhub installed in it)"
-    slug: "custom"
+  - display_name: "Choose your environment and resources"
+    default: true
     profile_options:
       image:
-        display_name: Image
+        display_name: Environment
+        # Dynamic image building requires binderhub
+        dynamic_image_building:
+          enabled: False
         unlisted_choice:
           enabled: True
           display_name: "Custom image"
+          description: Specify your own docker image (must have python and jupyterhub installed in it)
+          validation_regex: "^.+:.+$"
+          validation_message: "Must be a publicly available docker image, of form <image-name>:<tag>"
           kubespawner_override:
             image: "{value}"
-            default_url: /lab
-        choices: {}
-  - display_name: "Bring your own image (GPU)"
-    description: "Specify your own docker image (must have python and jupyterhub installed in it)"
-    slug: "custom"
-    profile_options:
-      image:
-        display_name: Image
-        unlisted_choice:
-          enabled: True
-          display_name: "Custom image"
-          kubespawner_override:
-            image: "{value}"
-            default_url: /lab
-            extra_resource_limits:
-              nvidia.com/gpu: "1"
-        choices: {}
+        choices:
+          01-cpu:
+            display_name: CPU 
+            description: General purpose Python + R environment 
+            kubespawner_override:
+              image:  "ghcr.io/boettiger-lab/binder:latest"
+              default_url: /vscode
+          02-gpu:
+            display_name: GPU
+            description: CUDA environment
+            kubespawner_override:
+              image: "ghcr.io/rocker-org/cuda:latest"
+              working_dir: /home/rstudio
+              extra_resource_limits:
+                nvidia.com/gpu: "1"
+      resource_allocation:
+        display_name: Resource Allocation
+        choices:
+          mem_8:
+            display_name: 8 GB RAM
+            kubespawner_override:
+              mem_guarantee: 8G
+              mem_limit: 8G
+              cpu_request: 2
+              cpu_limit: 2
+            default: true
+          mem_16:
+            display_name: 16 GB RAM
+            kubespawner_override:
+              mem_guarantee: 16G
+              mem_limit: 16G
+              cpu_request: 4
+              cpu_limit: 4
+          mem_32:
+            display_name: 32 GB RAM
+            kubespawner_override:
+              mem_guarantee: 32G
+              mem_limit: 32G
+              cpu_request: 16
+              cpu_limit: 16
 
 scheduling:
   userScheduler:
@@ -186,10 +218,10 @@ ingress:
 
 cull:
   enabled: true
-  users: false
-  removeNamedServers: false
+  users: true 
+  removeNamedServers: true
   timeout: 3600
-  every: 600
+  every: 6000
   concurrency: 10
   maxAge: 0
 
