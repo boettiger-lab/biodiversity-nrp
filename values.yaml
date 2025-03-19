@@ -140,7 +140,7 @@ singleuser:
   - display_name: "Choose your environment and resources"
     default: true
     profile_options:
-      image:
+      01-image:
         display_name: Environment
         # Dynamic image building requires binderhub
         dynamic_image_building:
@@ -159,20 +159,33 @@ singleuser:
             description: General purpose Python + R environment 
             kubespawner_override:
               image:  "ghcr.io/boettiger-lab/binder:latest"
-              default_url: /vscode
           02-gpu:
             display_name: GPU
             description: CUDA environment
             kubespawner_override:
               image: "ghcr.io/rocker-org/cuda:latest"
-              working_dir: /home/rstudio
               extra_resource_limits:
                 nvidia.com/gpu: "1"
-      resource_allocation:
+      02-ide:
+        display_name: IDE
+        choices:
+          lab:
+            display_name: Jupyter
+            kubespawner_override:
+              default_url: /lab
+          vscode:
+            display_name: VSCode
+            kubespawner_override:
+              default_url: /vscode
+          rstudio:
+            display_name: RStudio
+            kubespawner_override:
+              default_url: /rstudio
+      03-resource_allocation:
         display_name: Resource Allocation
         choices:
           mem_8:
-            display_name: 8 GB RAM
+            display_name: 8 GB RAM, 2 CPU
             kubespawner_override:
               mem_guarantee: 8G
               mem_limit: 8G
@@ -180,14 +193,14 @@ singleuser:
               cpu_limit: 2
             default: true
           mem_16:
-            display_name: 16 GB RAM
+            display_name: 16 GB RAM, 4 CPU
             kubespawner_override:
               mem_guarantee: 16G
               mem_limit: 16G
               cpu_request: 4
               cpu_limit: 4
           mem_32:
-            display_name: 32 GB RAM
+            display_name: 32 GB RAM, 16 CPU
             kubespawner_override:
               mem_guarantee: 32G
               mem_limit: 32G
